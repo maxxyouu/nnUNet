@@ -101,6 +101,7 @@ os.chdir(base_dir)
 # # note that since we only take out the first 5 slices, might not have any labels
 # plt.subplots_adjust(wspace=.1, hspace=.1)
 # plt.show()
+
 # %% train basic model
 os.chdir(main_dir)
 os.system('nnUNet_train 3d_fullres nnUNetTrainerV2 004 0')

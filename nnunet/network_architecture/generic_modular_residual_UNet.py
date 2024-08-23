@@ -412,10 +412,10 @@ def find_3d_configuration():
                             [3, 3, 3]]
 
     unet = FabiansUNet(num_modalities, initial_num_features, blocks_per_stage_encoder[:len(conv_op_kernel_sizes)], 2,
-                       pool_op_kernel_sizes, conv_op_kernel_sizes,
-                       get_default_network_config(3, dropout_p=None), num_classes,
-                       blocks_per_stage_decoder[:len(conv_op_kernel_sizes)-1], False, False,
-                       max_features=max_num_features).cuda()
+                        pool_op_kernel_sizes, conv_op_kernel_sizes,
+                        get_default_network_config(3, dropout_p=None), num_classes,
+                        blocks_per_stage_decoder[:len(conv_op_kernel_sizes)-1], False, False,
+                        max_features=max_num_features).cuda()
 
     optimizer = SGD(unet.parameters(), lr=0.1, momentum=0.95)
     loss = DC_and_CE_loss({'batch_dice': True, 'smooth': 1e-5, 'do_bg': False}, {})

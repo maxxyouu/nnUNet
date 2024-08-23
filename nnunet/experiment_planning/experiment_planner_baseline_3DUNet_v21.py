@@ -117,8 +117,9 @@ class ExperimentPlanner3D_v21(ExperimentPlanner):
         # we compute as if we were using only 30 feature maps. We can do that because fp16 training is the standard
         # now. That frees up some space. The decision to go with 32 is solely due to the speedup we get (non-multiples
         # of 8 are not supported in nvidia amp)
-        ref = Generic_UNet.use_this_for_batch_size_computation_3D * self.unet_base_num_features / \
-              Generic_UNet.BASE_NUM_FEATURES_3D
+        #NOTE: self.unet_base_num_features / Generic_UNet.BASE_NUM_FEATURES_3D is the discount ratio of the reference, depends
+        # on the gpu
+        ref = Generic_UNet.use_this_for_batch_size_computation_3D * self.unet_base_num_features / Generic_UNet.BASE_NUM_FEATURES_3D
         here = Generic_UNet.compute_approx_vram_consumption(new_shp, network_num_pool_per_axis,
                                                             self.unet_base_num_features,
                                                             self.unet_max_num_filters, num_modalities,

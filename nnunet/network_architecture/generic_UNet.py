@@ -160,8 +160,7 @@ class Upsample(nn.Module):
         self.size = size
 
     def forward(self, x):
-        return nn.functional.interpolate(x, size=self.size, scale_factor=self.scale_factor, mode=self.mode,
-                                         align_corners=self.align_corners)
+        return nn.functional.interpolate(x, size=self.size, scale_factor=self.scale_factor, mode=self.mode, align_corners=self.align_corners)
 
 
 class Generic_UNet(SegmentationNetwork):

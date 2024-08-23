@@ -329,7 +329,7 @@ class nnUNetTrainer(NetworkTrainer):
             assert len(list(plans['plans_per_stage'].keys())) == 1, \
                 "If self.stage is None then there can be only one stage in the plans file. That seems to not be the " \
                 "case. Please specify which stage of the cascade must be trained"
-            self.stage = list(plans['plans_per_stage'].keys())[0]
+            self.stage = list(plans['plans_per_stage'].keys())[0] # automatically specify the number of stages in the network
         self.plans = plans
 
         stage_plans = self.plans['plans_per_stage'][self.stage]
