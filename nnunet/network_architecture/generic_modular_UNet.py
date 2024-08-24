@@ -28,7 +28,7 @@ combine and b) enable easy swapping between segmentation or classification mode 
 """
 
 
-def get_default_network_config(dim=2, dropout_p=None, nonlin="LeakyReLU", norm_type="bn"):
+def get_default_network_config(dim=2, dropout_p=None, nonlin="GELU", norm_type="bn"):
     """
     returns a dictionary that contains pointers to conv, nonlin and norm ops and the default kwargs I like to use
     :return:
@@ -72,6 +72,9 @@ def get_default_network_config(dim=2, dropout_p=None, nonlin="LeakyReLU", norm_t
     elif nonlin == "ReLU":
         props['nonlin'] = nn.ReLU
         props['nonlin_kwargs'] = {'inplace': True}
+    elif nonlin == 'GELU':
+        props['nonlin'] = nn.GELU
+        props['nonlin_kwargs'] = {'approximate': 'none'}
     else:
         raise ValueError
 

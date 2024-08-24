@@ -20,16 +20,12 @@ from nnunet.network_architecture.generic_UNet import Upsample
 from nnunet.network_architecture.generic_modular_UNet import get_default_network_config
 from nnunet.network_architecture.neural_network import SegmentationNetwork
 from timm.models.layers import trunc_normal_tf_ as trunc_normal_
-from nnunet.training.loss_functions.dice_loss import DC_and_CE_loss
 from torch import nn
 from torch.optim import SGD
 from torch.backends import cudnn
 import math
 from torch.nn import functional as F
-
 from nnunet.training.loss_functions.dualTasks_dice_ce_loss import MultiTask_DCCE_CE_loss
-
-
 
 class ResidualUNetEncoder(nn.Module):
     def __init__(self, input_channels, base_num_features, num_blocks_per_stage, feat_map_mul_on_downscale,
@@ -140,8 +136,7 @@ class ResidualUNetEncoder(nn.Module):
 
         current_shape = np.array(patch_size)
 
-        tmp = (num_conv_per_stage_encoder[0] * 2 + 1) * np.prod(current_shape) * base_num_features \
-              + num_modalities * np.prod(current_shape)
+        tmp = (num_conv_per_stage_encoder[0] * 2 + 1) * np.prod(current_shape) * base_num_features + num_modalities * np.prod(current_shape)
 
         num_feat = base_num_features
 
@@ -198,6 +193,9 @@ class ConvBN_3D(nn.Module):
         return self.act(self.norm(self.conv(x)))
     
 class ASPP(nn.Module):
+    """
+        motivation of spatial and contextual information help multi-class classification: https://arxiv.org/abs/2111.12296
+    """
     def __init__(self, in_channels, output_channels, scale_factor, mode, atrous_rates=[6 , 12, 18]):
         super().__init__()
 
@@ -224,7 +222,7 @@ class ASPP(nn.Module):
 
         self.upsample = Upsample(scale_factor=list(scale_factor), mode=mode)
 
-        self._proj_after_upsample = ConvBN_3D(output_channels, output_channels, kernel_size=1, bias=False,
+        self._proj_after_upsample_bn_act = ConvBN_3D(output_channels, output_channels, kernel_size=1, bias=False,
                                     norm='syncbn', act='gelu')
     def forward(self, x):
         #NOTE: the input and output shape should be the same based on the upsample size
@@ -245,7 +243,7 @@ class ASPP(nn.Module):
         x = self._proj_conv_bn_act(x)
         # x = self._proj_drop(x)
         x = self.upsample(x) # upsample to the corresponding size NOTE: try downsample if this does not work well.
-        x = self._proj_after_upsample(x)
+        x = self._proj_after_upsample_bn_act(x)
         return x
 
 class ResidualMultiTaskUNetDecoder(nn.Module):
@@ -288,7 +286,7 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
         if num_blocks_per_stage is None:
             num_blocks_per_stage = previous.num_blocks_per_stage[:-1][::-1]
 
-        assert len(num_blocks_per_stage) == len(previous.num_blocks_per_stage) - 1
+        assert len(num_blocks_per_stage) == len(previous.num_blocks_per_stage) - 1 # decoder does not have the stem
 
         # store the encoder convolution configuration to the decoder configuration
         self.stage_pool_kernel_size = previous_stage_pool_kernel_size
@@ -328,7 +326,7 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
                 seg_layer = self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True)
                 class_layer = nn.Sequential(
                     #NOTE: check if this need to massage the feature before pooling
-                    self.props['conv_op'](features_skip, features_skip, 3, 1, 0, 1, 1, bias=True), # the input are the vanilla upsampled , masage it
+                    # self.props['conv_op'](features_skip, features_skip, 3, 1, 0, 1, 1, bias=True),
                     nn.AdaptiveAvgPool3d(1),
                     self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True))
 
@@ -342,17 +340,10 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
         # task head
         self.segmentation_head = self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True)
         self.classification_head = nn.Sequential(
-            #TODO: use np.sum(decoder_output_features) after debugging
-            # since the input are the concatenated result, need to massage it a bit before classification, features_skip = 32
             # self.props['conv_op'](np.sum(decoder_output_features[0]), features_skip, 3, 1, 0, 1, 1, bias=True),
-            self.props['conv_op'](np.sum(decoder_output_features), features_skip, 3, 1, 0, 1, 1, bias=True),\
+            self.props['conv_op'](np.sum(decoder_output_features), features_skip, 3, 1, 0, 1, 1, bias=True),
             nn.AdaptiveAvgPool3d(1),
             self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True))
-
-        # TODO: comment this after debugging
-        # self.nonreliable_classification_head = nn.Sequential(
-        #     nn.AdaptiveAvgPool3d(1),
-        #     self.props['conv_op'](np.sum(decoder_output_features), num_classes, 1, 1, 0, 1, 1, bias=True))
 
         self.tus = nn.ModuleList(self.tus)
         self.stages = nn.ModuleList(self.stages)
@@ -413,6 +404,8 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
         """
         This only applies for num_conv_per_stage and convolutional_upsampling=True
         not real vram consumption. just a constant term to which the vram consumption will be approx proportional
+
+        NOTE: the approximation does not include the storage for the auxiliary classfication head.
         (+ offset for parameter storage)
         :param patch_size:
         :param num_pool_per_axis:
@@ -423,17 +416,27 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
         npool = len(pool_op_kernel_sizes) - 1
 
         current_shape = np.array(patch_size)
-        tmp = (num_blocks_per_stage_decoder[-1] * 2 + 1) * np.prod(
-            current_shape) * base_num_features + num_classes * np.prod(current_shape)
+
+        # here is the decoder, this find the space occupied by the output of the decoder, there are two terms, the first term is for the features, the second term is for the output
+        # note that the decoder and encoder is symetric, so we use base_num_features
+        # np.prod(current_shape) * base_num_features as number of channels times the spatial size of the 3d volumes (total number of voxels)
+        # num_classes * np.prod(current_shape) is the prediction tensor with the same as the input spatially but with num_classes as channel for multi-class labels
+        # num_blocks_per_stage_decoder[-1] * 2 is number of blocks in the decoder + that of the encoder (symmetry) + a transposed feature map for the +1
+        tmp = (num_blocks_per_stage_decoder[-1] * 2 + 1) * np.prod(current_shape) * base_num_features + num_classes * np.prod(current_shape)
 
         num_feat = base_num_features
-
         for p in range(1, npool):
             current_shape = current_shape / np.array(pool_op_kernel_sizes[p])
             num_feat = min(num_feat * feat_map_mul_on_downscale, max_num_features)
             num_convs = num_blocks_per_stage_decoder[-(p + 1)] * 2 + 1 + 1  # +1 for transpconv and +1 for conv in skip
             print(p, num_feat, num_convs, current_shape)
             tmp += num_convs * np.prod(current_shape) * num_feat
+
+            # aspp: concatenated tensor with 5 spatial scales, each scale has size of np.prod(current_shape) * num_feat
+            tmp += np.prod(current_shape) * num_feat * 5
+            # not sure if should include the tensor before the upsample operation: _proj_conv_bn_act
+            # aspp: upsampled tensor + final projection, use patch_size because the upsampled tensor is of size the original input image
+            tmp += num_feat * np.prod(patch_size) * 2
 
         return tmp * batch_size
 
@@ -553,6 +556,7 @@ if __name__ == "__main__":
         skips = unet.encoder(dummy_input)
         print([i.shape for i in skips])
         #[torch.Size([2, 32, 20, 320, 256]), torch.Size([2, 64, 20, 160, 128]), torch.Size([2, 128, 10, 80, 64]), torch.Size([2, 256, 10, 40, 32])]
+
         output = unet.decoder(skips)
         # input for the cross entropy loss expect a 2d tensor (batch, )
         seg_prediction, class_prediction = output
