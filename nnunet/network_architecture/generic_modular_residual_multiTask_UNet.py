@@ -148,22 +148,6 @@ class ResidualUNetEncoder(nn.Module):
             tmp += num_convs * np.prod(current_shape) * num_feat
         return tmp * batch_size
 
-
-def get_norm(name, channels):
-    if name is None or name.lower() == 'none':
-        return nn.Identity()
-
-    if name.lower() == 'syncbn':
-        return nn.SyncBatchNorm(channels, eps=1e-3, momentum=0.01)
-
-def get_activation(name):
-    if name is None or name.lower() == 'none':
-        return nn.Identity()
-    if name == 'relu':
-        return nn.ReLU()
-    elif name == 'gelu':
-        return nn.GELU()
-    
 class ConvBN_3D(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, norm=None, act=None,
                 conv_type='3d', conv_init='he_normal', norm_init=1.0):
@@ -171,8 +155,8 @@ class ConvBN_3D(nn.Module):
         
         self.conv = nn.Conv3d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias)
 
-        self.norm = get_norm(norm, out_channels)
-        self.act = get_activation(act)
+        self.norm = norm
+        self.act = act
 
         if conv_init == 'normal':
             nn.init.normal_(self.conv.weight, std=.02)
@@ -196,34 +180,38 @@ class ASPP(nn.Module):
     """
         motivation of spatial and contextual information help multi-class classification: https://arxiv.org/abs/2111.12296
     """
-    def __init__(self, in_channels, output_channels, scale_factor, mode, atrous_rates=[6 , 12, 18]):
+    def __init__(self, in_channels, output_channels, scale_factor, mode, network_props, atrous_rates=[6 , 12, 18]):
         super().__init__()
 
-        self._aspp_conv0 = ConvBN_3D(in_channels, output_channels, kernel_size=1, bias=False, norm='syncbn', act='gelu')
+        self.norm = network_props['norm_op'](in_channels, **network_props['norm_op_kwargs'])
+        self.nonlin = network_props['nonlin'](**network_props['nonlin_kwargs'])
+
+        self._aspp_conv0 = ConvBN_3D(in_channels, output_channels, kernel_size=1, bias=False, norm=self.norm, act=self.nonlin)
 
         rate1, rate2, rate3 = atrous_rates
         self._aspp_conv1 = ConvBN_3D(in_channels, output_channels, kernel_size=3, dilation=rate1, padding=rate1, bias=False,
-                                    norm='syncbn', act='gelu')
+                                    norm=self.norm, act=self.nonlin)
 
         self._aspp_conv2 = ConvBN_3D(in_channels, output_channels, kernel_size=3, dilation=rate2, padding=rate2, bias=False,
-                                    norm='syncbn', act='gelu')
+                                    norm=self.norm, act=self.nonlin)
 
         self._aspp_conv3 = ConvBN_3D(in_channels, output_channels, kernel_size=3, dilation=rate3, padding=rate3, bias=False,
-                                    norm='syncbn', act='gelu')
+                                    norm=self.norm, act=self.nonlin)
 
         self._avg_pool = nn.AdaptiveAvgPool3d(1) # for global average pooling in 3d
         self._aspp_pool = ConvBN_3D(in_channels, output_channels, kernel_size=1, bias=False,
-                                    norm='syncbn', act='gelu')
+                                    norm=self.norm, act=self.nonlin)
 
         self._proj_conv_bn_act = ConvBN_3D(output_channels * 5, output_channels, kernel_size=1, bias=False,
-                                    norm='syncbn', act='gelu')
+                                    norm=self.norm, act=self.nonlin)
         # https://github.com/google-research/deeplab2/blob/main/model/decoder/aspp.py#L249
         self._proj_drop = nn.Dropout(p=0.1)
 
         self.upsample = Upsample(scale_factor=list(scale_factor), mode=mode)
 
         self._proj_after_upsample_bn_act = ConvBN_3D(output_channels, output_channels, kernel_size=1, bias=False,
-                                    norm='syncbn', act='gelu')
+                                    norm=self.norm, act=self.nonlin)
+
     def forward(self, x):
         #NOTE: the input and output shape should be the same based on the upsample size
         #of the global average pooling, the concatenation after, and the kernel size is 1 for the final projection.
@@ -274,6 +262,9 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
         else:
             self.props = network_props
 
+        # self.norm = network_props['norm_op'](in_channels, **network_props['norm_op_kwargs'])
+        # self.nonlin = network_props['nonlin'](**network_props['nonlin_kwargs'])
+
         if self.props['conv_op'] == nn.Conv2d:
             transpconv = nn.ConvTranspose2d
             upsample_mode = "bilinear"
@@ -315,35 +306,51 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
             
             # massage the upsampled features
             # after we tu we concat features so now we have 2xfeatures_skip
+            # note residuallayer first apply nonlinearity before perform convolution and also perform nonlinear at the end
             self.stages.append(ResidualLayer(2 * features_skip, features_skip, previous_stage_conv_op_kernel_size[s],
                                             self.props, num_blocks_per_stage[i], None, block, block_kwargs))
             
             # massage the decoded features at different scale at each stage
-            self.classification_stages.append(ASPP(features_skip, features_skip, scale_factor=cum_upsample[s], mode=upsample_mode))
+            self.classification_stages.append(ASPP(features_skip, features_skip, scale_factor=cum_upsample[s], mode=upsample_mode, network_props=self.props))
 
             if deep_supervision and s != 0:
 
-                seg_layer = self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True)
                 class_layer = nn.Sequential(
-                    #NOTE: check if this need to massage the feature before pooling
-                    # self.props['conv_op'](features_skip, features_skip, 3, 1, 0, 1, 1, bias=True),
-                    nn.AdaptiveAvgPool3d(1),
-                    self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True))
+                        #NOTE: check if this need to massage the feature before pooling
+                        # self.props['conv_op'](features_skip, features_skip, 3, 1, 0, 1, 1, bias=True),
+                        nn.AdaptiveAvgPool3d(1),
+                        self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True)
+                    )
 
                 self.deep_supervision_class_outputs.append(class_layer)
+
+                seg_layer = self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True)
                 if upscale_logits:
                     upsample = Upsample(scale_factor=cum_upsample[s], mode=upsample_mode)
-                    self.deep_supervision_seg_outputs.append(nn.Sequential(seg_layer, upsample))
+                    self.deep_supervision_seg_outputs.append(nn.Sequential(
+                        seg_layer,
+                        upsample)
+                    )
                 else:
-                    self.deep_supervision_seg_outputs.append(seg_layer)
+                    self.deep_supervision_seg_outputs.append(nn.Sequential(
+                        seg_layer
+                    ))
 
         # task head
-        self.segmentation_head = self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True)
+        self.segmentation_head = nn.Sequential(
+            self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True)
+        )
         self.classification_head = nn.Sequential(
-            # self.props['conv_op'](np.sum(decoder_output_features[0]), features_skip, 3, 1, 0, 1, 1, bias=True),
-            self.props['conv_op'](np.sum(decoder_output_features), features_skip, 3, 1, 0, 1, 1, bias=True),
+            #TODO: remove this after debugging
+            self.props['conv_op'](np.sum(decoder_output_features[-1]), features_skip, 3, 1, 0, 1, 1, bias=True),
+            self.props['norm_op'](np.sum(decoder_output_features[-1]), **network_props['norm_op_kwargs']),
+            #TODO: uncomment this after debugging
+            # self.props['conv_op'](np.sum(decoder_output_features), features_skip, 3, 1, 0, 1, 1, bias=True),
+            # self.props['norm_op'](np.sum(decoder_output_features), **network_props['norm_op_kwargs']),
+            self.props['nonlin'](**network_props['nonlin_kwargs']),
             nn.AdaptiveAvgPool3d(1),
-            self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True))
+            self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True)
+        )
 
         self.tus = nn.ModuleList(self.tus)
         self.stages = nn.ModuleList(self.stages)
@@ -383,10 +390,10 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
         x = torch.cat(class_outputs, dim=1)
 
         # TODO: uncomment this after debugging
-        classification = self.classification_head(x)
+        # classification = self.classification_head(x).squeeze()
 
         # TODO: comment this after debugging
-        # classification = self.classification_head(class_outputs[0]).squeeze()
+        classification = self.classification_head(class_outputs[-1]).squeeze()
 
         if self.deep_supervision:
             seg_outputs.append(segmentation)
@@ -453,9 +460,9 @@ class ResidualMultiTaskUNet(SegmentationNetwork):
     default_blocks_per_stage_decoder = (1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
 
     def __init__(self, input_channels, base_num_features, num_blocks_per_stage_encoder, feat_map_mul_on_downscale,
-                 pool_op_kernel_sizes, conv_kernel_sizes, props, num_classes, num_blocks_per_stage_decoder,
-                 deep_supervision=False, upscale_logits=False, max_features=512, initializer=None,
-                 block=BasicResidualBlock, block_kwargs=None):
+                pool_op_kernel_sizes, conv_kernel_sizes, props, num_classes, num_blocks_per_stage_decoder,
+                deep_supervision=False, upscale_logits=False, max_features=512, initializer=None,
+                block=BasicResidualBlock, block_kwargs=None):
         super(ResidualMultiTaskUNet, self).__init__()
 
         if block_kwargs is None:
