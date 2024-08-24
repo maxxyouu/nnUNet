@@ -224,6 +224,8 @@ class ASPP(nn.Module):
 
         self.upsample = Upsample(scale_factor=list(scale_factor), mode=mode)
 
+        self._proj_after_upsample = ConvBN_3D(output_channels, output_channels, kernel_size=1, bias=False,
+                                    norm='syncbn', act='gelu')
     def forward(self, x):
         #NOTE: the input and output shape should be the same based on the upsample size
         #of the global average pooling, the concatenation after, and the kernel size is 1 for the final projection.
@@ -243,6 +245,7 @@ class ASPP(nn.Module):
         x = self._proj_conv_bn_act(x)
         # x = self._proj_drop(x)
         x = self.upsample(x) # upsample to the corresponding size NOTE: try downsample if this does not work well.
+        x = self._proj_after_upsample(x)
         return x
 
 class ResidualMultiTaskUNetDecoder(nn.Module):
@@ -321,9 +324,10 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
             self.classification_stages.append(ASPP(features_skip, features_skip, scale_factor=cum_upsample[s], mode=upsample_mode))
 
             if deep_supervision and s != 0:
+
                 seg_layer = self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True)
                 class_layer = nn.Sequential(
-                    #TODO: check if this need to massage the feature before pooling
+                    #NOTE: check if this need to massage the feature before pooling
                     self.props['conv_op'](features_skip, features_skip, 3, 1, 0, 1, 1, bias=True), # the input are the vanilla upsampled , masage it
                     nn.AdaptiveAvgPool3d(1),
                     self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True))
@@ -340,14 +344,15 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
         self.classification_head = nn.Sequential(
             #TODO: use np.sum(decoder_output_features) after debugging
             # since the input are the concatenated result, need to massage it a bit before classification, features_skip = 32
-            self.props['conv_op'](np.sum(decoder_output_features[0]), features_skip, 3, 1, 0, 1, 1, bias=True),
+            # self.props['conv_op'](np.sum(decoder_output_features[0]), features_skip, 3, 1, 0, 1, 1, bias=True),
+            self.props['conv_op'](np.sum(decoder_output_features), features_skip, 3, 1, 0, 1, 1, bias=True),\
             nn.AdaptiveAvgPool3d(1),
             self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True))
 
         # TODO: comment this after debugging
-        self.nonreliable_classification_head = nn.Sequential(
-            nn.AdaptiveAvgPool3d(1),
-            self.props['conv_op'](np.sum(decoder_output_features), num_classes, 1, 1, 0, 1, 1, bias=True))
+        # self.nonreliable_classification_head = nn.Sequential(
+        #     nn.AdaptiveAvgPool3d(1),
+        #     self.props['conv_op'](np.sum(decoder_output_features), num_classes, 1, 1, 0, 1, 1, bias=True))
 
         self.tus = nn.ModuleList(self.tus)
         self.stages = nn.ModuleList(self.stages)
@@ -387,14 +392,14 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
         x = torch.cat(class_outputs, dim=1)
 
         # TODO: uncomment this after debugging
-        # classification = self.classification_head(x)
+        classification = self.classification_head(x)
 
         # TODO: comment this after debugging
-        classification = self.classification_head(class_outputs[0])
+        # classification = self.classification_head(class_outputs[0]).squeeze()
 
         if self.deep_supervision:
             seg_outputs.append(segmentation)
-            class_outputs_deep_supervision.append(classification.squeeze()) # to shape [batch, classes]
+            class_outputs_deep_supervision.append(classification) # to shape [batch, classes]
             return seg_outputs[::-1], class_outputs_deep_supervision[::-1]
             # seg_outputs are ordered so that the seg from the highest layer is first, the seg from
             # the bottleneck of the UNet last
@@ -435,7 +440,7 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
 
 class ResidualMultiTaskUNet(SegmentationNetwork):
     """
-    main class that composite the encoder and decoder
+    main class that composite the encoder and decoder with DEEP SUPERVISION
     """
     use_this_for_batch_size_computation_2D = 858931200.0  # 1167982592.0
     use_this_for_batch_size_computation_3D = 727842816.0  # 1152286720.0
@@ -542,14 +547,13 @@ if __name__ == "__main__":
 
     dummy_input = torch.rand((batch_size, num_modalities, *patch_size))#.cuda()
     dummy_seg_gt = (torch.rand((batch_size, 1, *patch_size)) * num_classes).round().clamp_(0, 2).long()#.cuda().long()
-    dummy_class_gt = torch.randn(batch_size, num_classes)
+    dummy_class_gt = torch.randint(0, num_classes, (batch_size,))
     for _ in range(20):
         optimizer.zero_grad()
         skips = unet.encoder(dummy_input)
         print([i.shape for i in skips])
         #[torch.Size([2, 32, 20, 320, 256]), torch.Size([2, 64, 20, 160, 128]), torch.Size([2, 128, 10, 80, 64]), torch.Size([2, 256, 10, 40, 32])]
         output = unet.decoder(skips)
-        #TODO: check chatgpt to massage the right input.
         # input for the cross entropy loss expect a 2d tensor (batch, )
         seg_prediction, class_prediction = output
         l = loss(seg_prediction, class_prediction, dummy_seg_gt, dummy_class_gt)
