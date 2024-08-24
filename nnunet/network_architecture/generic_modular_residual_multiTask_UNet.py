@@ -442,7 +442,7 @@ class ResidualMultiTaskUNetDecoder(nn.Module):
             # aspp: concatenated tensor with 5 spatial scales, each scale has size of np.prod(current_shape) * num_feat
             tmp += np.prod(current_shape) * num_feat * 5
             # not sure if should include the tensor before the upsample operation: _proj_conv_bn_act
-            # aspp: upsampled tensor + final projection, use patch_size because the upsampled tensor is of size the original input image
+            # aspp: upsampled tensor + final projection output, use patch_size because the upsampled tensor is of size the original input image
             tmp += num_feat * np.prod(patch_size) * 2
 
         return tmp * batch_size

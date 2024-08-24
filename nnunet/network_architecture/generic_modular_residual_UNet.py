@@ -193,10 +193,10 @@ class ResidualUNetDecoder(nn.Module):
             features_skip = previous_stage_output_features[s]
 
             self.tus.append(transpconv(features_below, features_skip, previous_stage_pool_kernel_size[s + 1],
-                                       previous_stage_pool_kernel_size[s + 1], bias=False))
+                                        previous_stage_pool_kernel_size[s + 1], bias=False))
             # after we tu we concat features so now we have 2xfeatures_skip
             self.stages.append(ResidualLayer(2 * features_skip, features_skip, previous_stage_conv_op_kernel_size[s],
-                                             self.props, num_blocks_per_stage[i], None, block, block_kwargs))
+                                            self.props, num_blocks_per_stage[i], None, block, block_kwargs))
 
             if deep_supervision and s != 0:
                 seg_layer = self.props['conv_op'](features_skip, num_classes, 1, 1, 0, 1, 1, bias=True)
