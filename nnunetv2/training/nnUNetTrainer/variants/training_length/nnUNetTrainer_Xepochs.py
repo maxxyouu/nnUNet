@@ -54,6 +54,8 @@ class nnUNetTrainer_100epochsSaveEvery5Epochs(nnUNetTrainer):
         super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
         self.num_epochs = 100
         self.save_every = 5
+        #NOTE: the nnunet trainer class will save the best model automatically, check the nnUNetLogger.log function and the
+        # nnUNetTrainer.on_epoch_end() function. 
 
 class nnUNetTrainer_250epochs(nnUNetTrainer):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
