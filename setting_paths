@@ -1,0 +1,21 @@
+# REFER THE FOLLOWING LINK TO SET UP THE ENV VARIABLES TO LOCATE THE DATA
+https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/set_environment_variables.md
+
+# check the following for installation instruction
+https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/installation_instructions.md
+
+set nnUNet_raw=C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet_raw
+set nnUNet_preprocessed=C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet_preprocessed
+set nnUNet_results=C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet_results
+
+# run the following command to get the fingerprint, plan, and etc
+# and run it with 
+cd C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet\nnunetv2\experiment_planning
+python plan_and_preprocess_entrypoints.py -d 11 -pl nnUNetPlannerResEncM
+
+# run the following command
+# go to the parent directory of the run_training class, then run the following commands
+# make sure it is in the conda enviroment as the pip install -e . command is ran in the base conda env. activate base conda env before proceeding
+
+cd C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet\nnunetv2\run\run_training.py
+python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5Epochs -p nnUNetResEncUNetMPlans
