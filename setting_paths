@@ -1,12 +1,21 @@
+# run the following code in case you see the triton GPU compiler too old
+export nnUNet_compile=f
+
 # REFER THE FOLLOWING LINK TO SET UP THE ENV VARIABLES TO LOCATE THE DATA
 https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/set_environment_variables.md
 
-# check the following for installation instruction
-https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/installation_instructions.md
+export nnUNet_raw=""
+export nnUNet_preprocessed=""
+export nnUNet_results=""
 
 set nnUNet_raw=C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet_raw
 set nnUNet_preprocessed=C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet_preprocessed
 set nnUNet_results=C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet_results
+
+# check the following for installation instruction
+https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/installation_instructions.md
+
+
 
 # run the following command to get the fingerprint, plan, and etc
 # and run it with 
