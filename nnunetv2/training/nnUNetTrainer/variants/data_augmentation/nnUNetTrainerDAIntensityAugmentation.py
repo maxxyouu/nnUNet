@@ -60,7 +60,7 @@ class IntensityAugmentationTransform(ImageOnlyTransform):
         kernel = torch.ones(self.window_size) / self.window_size
         kernel = kernel.unsqueeze(0).unsqueeze(0)  # Add batch and channel dimensions for 1D convolution
         random_noise = random_noise.unsqueeze(0).unsqueeze(0)  # Add batch and channel dimensions
-        smoothed_noise = F.conv1d(random_noise, kernel, padding=0).squeeze()
+        smoothed_noise = F.conv1d(random_noise, kernel, padding='reflect').squeeze() # use 'reflect' to ensure the same dimension as the input
 
         # Add a random linear component
         linear_curve_random_factor = torch.choice(torch.tensor([-1, 1]))
