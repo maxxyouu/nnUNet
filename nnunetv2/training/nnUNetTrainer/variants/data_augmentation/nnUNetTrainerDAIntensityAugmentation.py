@@ -36,6 +36,7 @@ from PIL import Image
 from batchgeneratorsv2.transforms.base.basic_transform import ImageOnlyTransform
 import torch
 import torch.nn.functional as F
+import SimpleITK as sitk
 
 class IntensityAugmentationTransform(ImageOnlyTransform):
     def __init__(self, linear_factor=0.5, window_size=20):
@@ -76,55 +77,17 @@ class IntensityAugmentationTransform(ImageOnlyTransform):
         for c in range(image_array.shape[0]):  # Iterate over channels
             augmented_image[c] = torch.interp(image_array[c].float(), xp, remapping_curve)
 
-        # NOTE: the following lines of code are kept for debugging purpose, to visualize the final result of the augmentation
-        # No stacking is required, we assume the output is still a 3D medical image tensor
-        # [C, D, H, W], same as the input
+        # # Convert augmented_image tensor to a NumPy array (since SimpleITK works with NumPy arrays)
+        # augmented_image_np = augmented_image.cpu().numpy()
 
-        # # Apply intensity remapping to the image (interpolation)
-        # augmented_image = torch.interp(image_array.float(), xp, remapping_curve)
+        # # Convert the NumPy array to a SimpleITK image
+        # # Ensure the order of dimensions is correct for saving, typically [D, H, W, C]
+        # sitk_image = sitk.GetImageFromArray(augmented_image_np.transpose(1, 2, 3, 0))  # Transpose from [C, D, H, W] to [D, H, W, C]
 
-        # # Stack the augmented image along the last axis to create a 3-channel RGB image
-        # rgb_array = augmented_image.unsqueeze(0).repeat(3, 1, 1)  # Assuming a grayscale input
-
-        # # Convert the RGB array back to an image (using PIL)
-        # rgb_array = rgb_array.permute(1, 2, 0).byte().cpu().numpy()  # Convert to CPU and NumPy
-        # augmented_image = Image.fromarray(rgb_array)
+        # # Save the image in the .mha format
+        # sitk.WriteImage(sitk_image, output_path)
 
         return augmented_image
-
-    # def intensity_augmentation(self, image_array):
-    #     """
-    #     Apply intensity remapping augmentation to the input image array
-    #     and save the result as a new PNG image.
-    #     NOTE: ORIGINAL NUMPY IMPLEMENTATION
-    #     """
-    #     # Generate random noise curve
-    #     random_noise = np.random.uniform(0, 255, size=256)
-
-    #     # Smooth the random noise curve with a moving average filter
-    #     kernel = np.ones(self.window_size) / self.window_size
-    #     smoothed_noise = convolve(random_noise, kernel, mode='reflect')
-
-    #     # Add a random linear component
-    #     linear_curve_random_factor = np.random.choice([-1, 1])
-    #     remapping_curve = smoothed_noise + self.linear_factor * linear_curve_random_factor * np.arange(256)
-
-    #     # Scale the remapping curve between 0 and 255
-    #     remapping_curve = np.interp(remapping_curve, (remapping_curve.min(), remapping_curve.max()), (0, 255))
-
-    #     # Create x-coordinates for the remapping curve
-    #     xp = np.linspace(0, 255, 256)
-
-    #     # Apply intensity remapping to the image
-    #     augmented_image = np.interp(image_array, xp, remapping_curve.astype(int))
-
-    #     rgb_array = np.stack((augmented_image,) * 3, axis=-1)
-
-    #     # Convert the RGB array back to an image
-    #     augmented_image = Image.fromarray(rgb_array.astype(np.uint8))
-
-    #     return augmented_image
-
 
 class nnUNetTrainer_DefaultDAAndIA(nnUNetTrainer):
 
@@ -453,3 +416,37 @@ class nnUNetTrainer_IAOnly(nnUNetTrainer):
             transforms.append(DownsampleSegForDSTransform(ds_scales=deep_supervision_scales))
 
         return ComposeTransforms(transforms)
+
+
+    # def intensity_augmentation(self, image_array):
+    #     """
+    #     Apply intensity remapping augmentation to the input image array
+    #     and save the result as a new PNG image.
+    #     NOTE: ORIGINAL NUMPY IMPLEMENTATION
+    #     """
+    #     # Generate random noise curve
+    #     random_noise = np.random.uniform(0, 255, size=256)
+
+    #     # Smooth the random noise curve with a moving average filter
+    #     kernel = np.ones(self.window_size) / self.window_size
+    #     smoothed_noise = convolve(random_noise, kernel, mode='reflect')
+
+    #     # Add a random linear component
+    #     linear_curve_random_factor = np.random.choice([-1, 1])
+    #     remapping_curve = smoothed_noise + self.linear_factor * linear_curve_random_factor * np.arange(256)
+
+    #     # Scale the remapping curve between 0 and 255
+    #     remapping_curve = np.interp(remapping_curve, (remapping_curve.min(), remapping_curve.max()), (0, 255))
+
+    #     # Create x-coordinates for the remapping curve
+    #     xp = np.linspace(0, 255, 256)
+
+    #     # Apply intensity remapping to the image
+    #     augmented_image = np.interp(image_array, xp, remapping_curve.astype(int))
+
+    #     rgb_array = np.stack((augmented_image,) * 3, axis=-1)
+
+    #     # Convert the RGB array back to an image
+    #     augmented_image = Image.fromarray(rgb_array.astype(np.uint8))
+
+    #     return augmented_image
