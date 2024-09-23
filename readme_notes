@@ -16,7 +16,6 @@ set nnUNet_results=C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet_results
 https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/installation_instructions.md
 
 
-
 # run the following command to get the fingerprint, plan, and etc
 # and run it with 
 cd C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet\nnunetv2\experiment_planning
