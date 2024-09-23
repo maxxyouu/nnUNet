@@ -1,5 +1,6 @@
 import torch
 
+from nnUNet.nnunetv2.training.nnUNetTrainer.variants.data_augmentation.nnUNetTrainerDAIntensityAugmentation import nnUNetTrainer_DefaultDAAndIA, nnUNetTrainer_IAOnly
 from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainer
 
 
@@ -56,6 +57,23 @@ class nnUNetTrainer_100epochsSaveEvery5Epochs(nnUNetTrainer):
         self.save_every = 5
         #NOTE: the nnunet trainer class will save the best model automatically, check the nnUNetLogger.log function and the
         # nnUNetTrainer.on_epoch_end() function. 
+
+class nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentation(nnUNetTrainer_DefaultDAAndIA):
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
+                 device: torch.device = torch.device('cuda')):
+        """used for debugging plans etc"""
+        super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
+        self.num_epochs = 100
+        self.save_every = 5
+
+
+class nnUNetTrainer_100epochsSaveEvery5EpochsWithOnlyIntensityAugmentation(nnUNetTrainer_IAOnly):
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
+                 device: torch.device = torch.device('cuda')):
+        """used for debugging plans etc"""
+        super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
+        self.num_epochs = 100
+        self.save_every = 5
 
 class nnUNetTrainer_250epochs(nnUNetTrainer):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
