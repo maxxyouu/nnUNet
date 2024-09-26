@@ -31,3 +31,10 @@ cd C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet\nnunetv2\run
 python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5Epochs -p nnUNetResEncUNetMPlans
 
 python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentation -p nnUNetResEncUNetMPlans
+
+# for inference, run the following
+
+go to the predict_from_raw_data.py file, adjust the paths, and run the script (note that that depends on the env variables set in the paths.py file)
+
+## note the following script does not work 
+nnUNetv2_predict -i 'C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet_raw\Dataset011_GE\imagesTs\' -o 'C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet_results\nnUNet_Prediction_Results\Dataset011_GE\nnUNetTrainer_100epochsSaveEvery5Epochs__nnUNetResEncUNetMPlans__3d_fullres\' -d 11 -tr nnUNetTrainer_100epochsSaveEvery5Epochs -c 3d_fullres
