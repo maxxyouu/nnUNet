@@ -221,7 +221,7 @@ def run_training_entry():
     parser.add_argument('dataset_name_or_id', type=str,
                         help="Dataset name or ID to train with")
     parser.add_argument('configuration', type=str,
-                        help="Configuration that should be trained")
+                        help="Configuration that should be trained" )
     parser.add_argument('fold', type=str,
                         help='Fold of the 5-fold cross-validation. Should be an int between 0 and 4.')
     parser.add_argument('-tr', type=str, required=False, default='nnUNetTrainer',
@@ -256,7 +256,9 @@ def run_training_entry():
                     help="Use this to set the device the training should run with. Available options are 'cuda' "
                          "(GPU), 'cpu' (CPU) and 'mps' (Apple M1/M2). Do NOT use this to set which GPU ID! "
                          "Use CUDA_VISIBLE_DEVICES=X nnUNetv2_train [...] instead!")
+
     args = parser.parse_args()
+
 
     assert args.device in ['cpu', 'cuda', 'mps'], f'-device must be either cpu, mps or cuda. Other devices are not tested/supported. Got: {args.device}.'
     if args.device == 'cpu':
@@ -282,4 +284,5 @@ if __name__ == '__main__':
     os.environ['MKL_NUM_THREADS'] = '1'
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
     # multiprocessing.set_start_method("spawn")
+
     run_training_entry()

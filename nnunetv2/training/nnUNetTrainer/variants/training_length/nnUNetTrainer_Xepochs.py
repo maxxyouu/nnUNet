@@ -1,6 +1,6 @@
 import torch
 
-from nnUNet.nnunetv2.training.nnUNetTrainer.variants.data_augmentation.nnUNetTrainerDAIntensityAugmentation import nnUNetTrainer_DefaultDAAndIA, nnUNetTrainer_IAOnly
+from nnunetv2.training.nnUNetTrainer.variants.data_augmentation.nnUNetTrainerDAIntensityAugmentation import nnUNetTrainer_DefaultDAAndIA, nnUNetTrainer_IAOnly
 from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainer
 
 

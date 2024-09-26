@@ -21,16 +21,16 @@ from batchgeneratorsv2.transforms.utils.pseudo2d import Convert3DTo2DTransform, 
 from batchgeneratorsv2.transforms.utils.random import RandomTransform
 from batchgeneratorsv2.transforms.utils.remove_label import RemoveLabelTansform
 from batchgeneratorsv2.transforms.utils.seg_to_regions import ConvertSegmentationToRegionsTransform
-from batchgenerators.dataloading.nondet_multi_threaded_augmenter import NonDetMultiThreadedAugmenter
-from batchgenerators.dataloading.single_threaded_augmenter import SingleThreadedAugmenter
+# from batchgenerators.dataloading.nondet_multi_threaded_augmenter import NonDetMultiThreadedAugmenter
+# from batchgenerators.dataloading.single_threaded_augmenter import SingleThreadedAugmenter
 
-from nnunetv2.training.dataloading.data_loader_2d import nnUNetDataLoader2D
-from nnunetv2.training.dataloading.data_loader_3d import nnUNetDataLoader3D
+# from nnunetv2.training.dataloading.data_loader_2d import nnUNetDataLoader2D
+# from nnunetv2.training.dataloading.data_loader_3d import nnUNetDataLoader3D
 from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainer
-from nnunetv2.utilities.default_n_proc_DA import get_allowed_n_proc_DA
+# from nnunetv2.utilities.default_n_proc_DA import get_allowed_n_proc_DA
 import numpy as np
-from scipy.ndimage import convolve
-from PIL import Image
+# from scipy.ndimage import convolve
+# from PIL import Image
 
 # for custom data augmentation
 from batchgeneratorsv2.transforms.base.basic_transform import ImageOnlyTransform
@@ -39,23 +39,35 @@ import torch.nn.functional as F
 import SimpleITK as sitk
 
 class IntensityAugmentationTransform(ImageOnlyTransform):
-    def __init__(self, linear_factor=0.5, window_size=20):
+    def __init__(self, p_per_channel:float = 1, linear_factor=0.5, window_size=20):
         super().__init__()
 
         self.linear_factor = linear_factor
         self.window_size = window_size
+        self.p_per_channel = p_per_channel
 
     def get_parameters(self, **data_dict) -> dict:
         return {}
+        # shape = data_dict['image'].shape
+        # dims = len(shape) - 1
+        # dct = {}
+        # dct['apply_to_channel'] = torch.rand(shape[0]) < self.p_per_channel
+
+        # return dct
 
     def intensity_augmentation(self, image_array: torch.Tensor, **params) -> torch.Tensor:
         """
         Apply intensity remapping augmentation to the input image tensor
         and return the result as a PIL Image.
         """
+        if len(params['apply_to_channel']) == 0:
+            return image_array
+        
+        # return image_array
+        print('here', image_array.shape)
+        
         # Generate random noise curve in PyTorch
         random_noise = torch.rand(256) * 255
-
         # Smooth the random noise curve with a moving average filter (convolution)
         kernel = torch.ones(self.window_size) / self.window_size
         kernel = kernel.unsqueeze(0).unsqueeze(0)  # Add batch and channel dimensions for 1D convolution
@@ -76,7 +88,7 @@ class IntensityAugmentationTransform(ImageOnlyTransform):
         augmented_image = torch.empty_like(image_array)
         for c in range(image_array.shape[0]):  # Iterate over channels
             augmented_image[c] = torch.interp(image_array[c].float(), xp, remapping_curve)
-
+        print('here', augmented_image)
         # # Convert augmented_image tensor to a NumPy array (since SimpleITK works with NumPy arrays)
         # augmented_image_np = augmented_image.cpu().numpy()
 
@@ -86,7 +98,6 @@ class IntensityAugmentationTransform(ImageOnlyTransform):
 
         # # Save the image in the .mha format
         # sitk.WriteImage(sitk_image, output_path)
-
         return augmented_image
 
 class nnUNetTrainer_DefaultDAAndIA(nnUNetTrainer):
