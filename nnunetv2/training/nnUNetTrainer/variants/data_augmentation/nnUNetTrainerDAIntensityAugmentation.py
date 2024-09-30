@@ -44,16 +44,20 @@ class IntensityAugmentationTransform(ImageOnlyTransform):
 
         self.linear_factor = linear_factor
         self.window_size = window_size
-        self.p_per_channel = p_per_channel
+        self.p_per_channel = p_per_channel # default to 1
 
     def get_parameters(self, **data_dict) -> dict:
-        return {}
-        # shape = data_dict['image'].shape
-        # dims = len(shape) - 1
-        # dct = {}
-        # dct['apply_to_channel'] = torch.rand(shape[0]) < self.p_per_channel
+        shape = data_dict['image'].shape
+        dct = {}
+        dct['apply_to_channel'] = torch.rand(shape[0]) < self.p_per_channel
 
-        # return dct
+        return dct
+
+    def _apply_to_image(self, img: torch.Tensor, **params) -> torch.tensor:
+        if sum(params['apply_to_channel']) == 0:
+            return img
+        augmented_img = self.intensity_augmentation(img, **params)
+        return augmented_img
 
     def intensity_augmentation(self, image_array: torch.Tensor, **params) -> torch.Tensor:
         """
@@ -88,7 +92,7 @@ class IntensityAugmentationTransform(ImageOnlyTransform):
         augmented_image = torch.empty_like(image_array)
         for c in range(image_array.shape[0]):  # Iterate over channels
             augmented_image[c] = torch.interp(image_array[c].float(), xp, remapping_curve)
-        print('here', augmented_image)
+        print('here', augmented_image.shape)
         # # Convert augmented_image tensor to a NumPy array (since SimpleITK works with NumPy arrays)
         # augmented_image_np = augmented_image.cpu().numpy()
 
