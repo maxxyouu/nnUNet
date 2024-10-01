@@ -5,9 +5,10 @@ export nnUNet_compile=f
 https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/set_environment_variables.md
 
 # [IN THE LAB]
-export nnUNet_raw=""
-export nnUNet_preprocessed=""
-export nnUNet_results=""
+ssh maxyou@titania.sri.utoronto.ca
+export nnUNet_raw="/home/maxyou/nnunet_parent/nnUNet_raw"
+export nnUNet_preprocessed="/home/maxyou/nnunet_parent/nnUNet_preprocessed"
+export nnUNet_results="/home/maxyou/nnunet_parent/nnUNet_results"
 
 # [IN THE HOME COMPUTER - Command Prompt]
 set nnUNet_raw=C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet_raw
@@ -17,7 +18,6 @@ set nnUNet_results=C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet_results
 # check the following for installation instruction
 https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/installation_instructions.md
 
-
 # run the following command to get the fingerprint, plan, and etc [NOTE: MOST LIKELY ONLY NEED TO BE RAN ONCE]
 # and run it with 
 cd C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet\nnunetv2\experiment_planning
@@ -25,7 +25,7 @@ python plan_and_preprocess_entrypoints.py -d 11 -pl nnUNetPlannerResEncM
 
 # run the following command [NOTE: EVERYTIME YOU WANT TO HAVE TO TRAIN A NEW MODEL]
 # go to the parent directory of the run_training class, then run the following commands
-# make sure it is in the conda enviroment as the pip install -e . command is ran in the base conda env. activate base conda env before proceeding
+# make sure it is in the conda enviroment as the ******pip install -e .****** command is ran in the base conda env. activate base conda env before proceeding
 
 cd C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet\nnunetv2\run
 python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5Epochs -p nnUNetResEncUNetMPlans
