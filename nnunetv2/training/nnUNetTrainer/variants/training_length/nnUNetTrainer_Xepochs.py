@@ -1,6 +1,6 @@
 import torch
 
-from nnunetv2.training.nnUNetTrainer.variants.data_augmentation.nnUNetTrainerDAIntensityAugmentation import nnUNetTrainer_DefaultDAAndIA, nnUNetTrainer_IAOnly
+from nnunetv2.training.nnUNetTrainer.variants.data_augmentation.nnUNetTrainerDAIntensityAugmentation import nnUNetTrainer_DefaultDAAndIA, nnUNetTrainer_IAOnly, nnUNetTrainer_DefaultDAAndIA_PostiveSlope, nnUNetTrainer_DefaultDAAndIA_NegativeSlope
 from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainer
 
 
@@ -59,6 +59,23 @@ class nnUNetTrainer_100epochsSaveEvery5Epochs(nnUNetTrainer):
         # nnUNetTrainer.on_epoch_end() function. 
 
 class nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentation(nnUNetTrainer_DefaultDAAndIA):
+    """compared to the following two implementation: with random slope sign when randomize the noise"""
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
+                 device: torch.device = torch.device('cuda')):
+        """used for debugging plans etc"""
+        super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
+        self.num_epochs = 100
+        self.save_every = 5
+
+class nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentationPositiveSlope(nnUNetTrainer_DefaultDAAndIA_PostiveSlope):
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
+                 device: torch.device = torch.device('cuda')):
+        """used for debugging plans etc"""
+        super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
+        self.num_epochs = 100
+        self.save_every = 5
+
+class nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentationNegativeSlope(nnUNetTrainer_DefaultDAAndIA_NegativeSlope):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
                  device: torch.device = torch.device('cuda')):
         """used for debugging plans etc"""

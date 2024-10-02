@@ -31,6 +31,8 @@ cd C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet\nnunetv2\run
 python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5Epochs -p nnUNetResEncUNetMPlans
 
 python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentation -p nnUNetResEncUNetMPlans
+python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentationPositiveSlope -p nnUNetResEncUNetMPlans
+python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentationNegativeSlope -p nnUNetResEncUNetMPlans
 
 # for inference, run the following
 
