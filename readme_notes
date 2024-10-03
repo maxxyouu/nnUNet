@@ -33,6 +33,7 @@ python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5Epoc
 python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentation -p nnUNetResEncUNetMPlans
 python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentationPositiveSlope -p nnUNetResEncUNetMPlans
 python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentationNegativeSlope -p nnUNetResEncUNetMPlans
+python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5EpochsWithOnlyIntensityAugmentation -p nnUNetResEncUNetMPlans
 
 # for inference, run the following
 
