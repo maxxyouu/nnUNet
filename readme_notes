@@ -34,6 +34,8 @@ python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5Epoc
 python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentationPositiveSlope -p nnUNetResEncUNetMPlans
 python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentationNegativeSlope -p nnUNetResEncUNetMPlans
 python run_training.py 11 3d_fullres 0 -tr nnUNetTrainer_100epochsSaveEvery5EpochsWithOnlyIntensityAugmentation -p nnUNetResEncUNetMPlans
+python run_training.py 11 3d_fullres 0 -tr nnUNetTrainerNoDA -p nnUNetResEncUNetMPlans
+
 
 # for inference, run the following and the prediction volumes are located in here: C:\Users\MaxYo\OneDrive\Desktop\nnunet_parent\nnUNet_raw\Dataset011_GE\nnUNet_Prediction_Results
 
