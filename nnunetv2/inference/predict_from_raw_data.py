@@ -905,12 +905,12 @@ if __name__ == '__main__':
         allow_tqdm=True
     )
     predictor.initialize_from_trained_model_folder(
-        join(nnUNet_results, 'Dataset011_GE\\nnUNetTrainer_100epochsSaveEvery5Epochs__nnUNetResEncUNetMPlans__3d_fullres'),
+        join(nnUNet_results, 'Dataset011_GE\\nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentationNegSlope__nnUNetResEncUNetMPlans__3d_fullres'),
         use_folds=(0,),
-        checkpoint_name='checkpoint_final.pth',
+        checkpoint_name='checkpoint_best.pth',
     )
     predictor.predict_from_files(join(nnUNet_raw, 'Dataset011_GE\\imagesTs'),
-                                 join(nnUNet_raw, 'Dataset011_GE\\nnUNet_Prediction_Results\\nnUNetTrainer_100epochsSaveEvery5Epochs__nnUNetResEncUNetMPlans__3d_fullres'),
+                                 join(nnUNet_raw, 'Dataset011_GE\\nnUNet_Prediction_Results\\nnUNetTrainer_100epochsSaveEvery5EpochsWithAdditionalIntensityAugmentationNegSlope__nnUNetResEncUNetMPlans__3d_fullres'),
                                  save_probabilities=False, overwrite=False,
                                  num_processes_preprocessing=2, num_processes_segmentation_export=2,
                                  folder_with_segs_from_prev_stage=None, num_parts=1, part_id=0)
